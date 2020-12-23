@@ -73,23 +73,25 @@ namespace HatchwaysBackend.Controllers
             }
             var distinctPosts = posts.DistinctBy(p => p.Id);
             
+            System.Reflection.PropertyInfo prop = null;
             if (sortBy != null)
             {
-                distinctPosts = distinctPosts.OrderBy(e=> e.GetType().GetProperty("Likes").PropertyType);
+                prop = typeof(Post).GetProperty(capitalizeFirst(sortBy));
+                distinctPosts = distinctPosts.OrderBy(e=> prop.GetValue(e,null));
             }
             if (direction == "desc" && sortBy != null)
             {
-                distinctPosts = distinctPosts.OrderByDescending(e => e.GetType().GetProperty(normalizeString(sortBy)));
+                distinctPosts = distinctPosts.OrderByDescending(e => prop.GetValue(e, null));
             }
             return new JsonResult(new PostModel { Posts = distinctPosts});
         }
 
-        static string normalizeString(string tag)
+        static string capitalizeFirst(string tag)
         {
             tag = tag.ToLower();
             char[] value = tag.ToCharArray();
             value[0] = char.ToUpper(value[0]);
-            return value.ToString();
+            return new string(value);
         }
     }
 }
