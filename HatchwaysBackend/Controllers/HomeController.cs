@@ -85,8 +85,72 @@ namespace HatchwaysBackend.Controllers
             }
             return new JsonResult(new PostModel { Posts = distinctPosts});
         }
+        [Route("authors")]
+        [HttpGet]
+        public async Task<JsonResult> AuthorsAsync()
+        {
+            HttpClient client = new HttpClient();
+            UriBuilder builder = new UriBuilder();
+            var tasks = new List<Task<HttpResponseMessage>>();
+            var posts = new List<Post>();
+            var authors = new List<Author>();
 
-        static string capitalizeFirst(string tag)
+            builder.Scheme = "https";
+            builder.Host = host;
+            builder.Path = "/api/assessment/blog/authors";
+            tasks.Add(client.GetAsync(builder.Uri));
+
+            builder.Path = "/api/assessment/blog/posts";
+            tasks.Add(client.GetAsync(builder.Uri));
+
+            var messages = await Task.WhenAll(tasks);
+            foreach (HttpResponseMessage message in messages)
+            {
+                if (message.IsSuccessStatusCode)
+                {
+                    var result = await message.Content.ReadAsStringAsync();
+                    if (message.RequestMessage.RequestUri.LocalPath.Contains("posts"))
+                    {
+                        posts.AddRange(JsonConvert.DeserializeObject<PostModel>(result).Posts);
+                    }
+                    else
+                    {
+                        authors.AddRange(JsonConvert.DeserializeObject<AuthorModel>(result).Authors);
+                    }
+                }
+                else
+                {
+                    HttpContext.Response.StatusCode = Convert.ToInt32(message.StatusCode);
+                    return new JsonResult(await message.Content.ReadAsStringAsync());
+                }
+            }
+
+            var mergedList = MergeAuthorsPosts(authors, posts);
+
+
+            return new JsonResult(new AuthorModel { Authors = authors });
+
+        }
+
+        IEnumerable<Author> MergeAuthorsPosts(List<Author> authors, List<Post> posts)
+        {
+            authors.ForEach(a => 
+            {
+                var all = posts.FindAll(p => p.AuthorId == a.Id);
+                var tags = new List<string>();
+                foreach(string[] s in all.Select(a => a.Tags))
+                {
+                    tags.AddRange(s);
+                }
+                a.Posts = all;
+                a.TotalLikeCount = all.Sum(s => s.Likes);
+                a.TotalReadCount = all.Sum(s => s.Reads);
+                a.Tags = tags.Distinct();
+            });
+            return authors;
+        }
+
+        string capitalizeFirst(string tag)
         {
             tag = tag.ToLower();
             char[] value = tag.ToCharArray();

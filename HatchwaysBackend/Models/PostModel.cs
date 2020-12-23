@@ -19,7 +19,7 @@ namespace HatchwaysBackend.Models
         public int Id { get; set; }
         [JsonProperty("author")]
         public string Author { get; set; }
-        public int Authorid { get; set; }
+        public int AuthorId { get; set; }
         public int Likes { get; set; }
         public decimal Popularity { get; set; }
         public int Reads { get; set; }
